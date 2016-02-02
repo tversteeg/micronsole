@@ -1,44 +1,47 @@
 #pragma once
 
+#include <stdint.h>
+#include <stdarg.h>
+
 #ifdef WINDOWS
 #include <gl/GL.h>
 #else
 #include <GL/glew.h>
 #endif
 
-#include <stdint.h>
-
 #include <ccFont/ccFont.h>
 #include <ccore/event.h>
+
+#define MAX_CMD_LEN 128
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct _cctTerm_t cctTerm_t;
-typedef void (*cctCmdptr_t) (cctTerm_t *con, int argc, char **argv);
+typedef struct _cctTerm cctTerm;
+typedef void (*cctCmdptr) (cctTerm *term, int argc, char **argv);
 
-struct _cctTerm_t {
-	font_t *font;
-	texture_t tex;
-	char *buf, cmdstr[MAX_CMD_LEN], **cmdnames;
-	cmdptr_t *cmdfs;
-	bool active;
-	unsigned int bufmaxsize, buflen, buflines, bufmaxlines, cmdstrlen, cmds;
+struct _cctTerm {
+	ccfFont *font;
+	unsigned width, height;
+	void *pixels;
+	char *out;
+	size_t outlen, outmaxlen;
 };
 
-void cctInit(cctTerm_t *con, unsigned int width, unsigned int height);
-void cctResize(cctTerm_t *con, unsigned int width, unsigned int height);
-void cctSetFont(cctTerm_t *con, font_t *font);
+void cctCreate(cctTerm *term, unsigned width, unsigned height);
+void cctFree(cctTerm *term);
+void cctResize(cctTerm *term, unsigned width, unsigned height);
+void cctSetFont(cctTerm *term, ccfFont *font);
 
-void cctRender(cctTerm_t *con, texture_t *target);
+void cctRender(cctTerm *term, GLuint texture);
 
-void cctHandleEvent(cctTerm_t *con, ccEvent event);
+void cctHandleEvent(cctTerm *term, ccEvent event);
 
-void _cctPrintf(cctTerm_t *con, const char *text, ...) __attribute__((format(printf, 2, 3)));
-#define cctPrintf(con, text, ...) _cctPrintf(con, text, ##__VA_ARGS__)
+void _cctPrintf(cctTerm *term, const char *text, ...) __attribute__((format(printf, 2, 3)));
+#define cctPrintf(term, text, ...) _cctPrintf(term, text, ##__VA_ARGS__)
 
-void cctMapCmd(cctTerm_t *con, const char *cmd, cctCmdptr_t cmdfunc);
+void cctMapCmd(cctTerm *term, const char *cmd, cctCmdptr cmdfunc);
 
 #ifdef __cplusplus
 }

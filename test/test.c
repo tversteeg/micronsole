@@ -1,5 +1,6 @@
-#include <ccFont/ccFont.h>
+#include <ccTerm/ccTerm.h>
 
+#include <ccFont/ccFont.h>
 #include <ccore/display.h>
 #include <ccore/window.h>
 #include <ccore/opengl.h>
@@ -14,57 +15,14 @@
 #include <GL/glew.h>
 #endif
 
-#define WIDTH 400
-#define HEIGHT 50
-
-#define TEST_FORMAT GL_RGB
-#define TEST_TYPE GL_UNSIGNED_BYTE
-
-typedef struct {
-	unsigned char r, g, b;
-} pixel_t;
-
-typedef struct {
-	unsigned int width, height;
-	pixel_t *pixels;
-} texture_t;
+#define WIDTH 500
+#define HEIGHT 400
 
 GLuint gltex;
-texture_t tex;
-ccfFont *font;
+ccfFont font;
+cctTerm term;
 
-void renderTexture(texture_t tex)
-{
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	glBindTexture(GL_TEXTURE_2D, gltex);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex.width, tex.height, 0, TEST_FORMAT, TEST_TYPE, tex.pixels);
-
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f);
-	glVertex2f(-1.0f, 1.0f);
-	glTexCoord2f(0.0f, 1.0f);
-	glVertex2f(-1.0f, -1.0f);
-	glTexCoord2f(1.0f, 1.0f);
-	glVertex2f(1.0f, -1.0f);
-	glTexCoord2f(1.0f, 0.0f);
-	glVertex2f(1.0f, 1.0f);
-	glEnd();
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void blitText(ccfFont *font, const char *text, int x, int y)
-{
-	ccfFontConfiguration conf = {.x = x, .y = y, .width = WIDTH, .wraptype = 0, .color = {1.0, 1.0, 0.0}};
-	int status = ccfGLTexBlitText(font, text, &conf, tex.width, tex.height, TEST_FORMAT, TEST_TYPE, (void*)tex.pixels);
-	if(status < 0){
-		fprintf(stderr, "ccfGLTexBlitText failed with status code: %d\n", status);
-		exit(1);
-	}
-}
-
-ccfFont* loadFont(const char *file)
+void loadFont(const char *file)
 {
 	unsigned flen = ccFileInfoGet(file).size;
 
@@ -79,13 +37,10 @@ ccfFont* loadFont(const char *file)
 
 	fclose(fp);
 
-	ccfFont *binfont = (ccfFont*)malloc(sizeof(ccfFont));
-	if(ccfBinToFont(binfont, bin, flen) == -1){
+	if(ccfBinToFont(&font, bin, flen) == -1){
 		fprintf(stderr, "Binary font failed: invalid version\n");
 		exit(1);
 	}
-
-	return binfont;
 }
 
 int main(int argc, char **argv)
@@ -109,10 +64,12 @@ int main(int argc, char **argv)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-	tex.width = WIDTH;
-	tex.height = HEIGHT;
-	tex.pixels = (pixel_t*)malloc(tex.width * tex.height * sizeof(pixel_t));
-	font = loadFont("font.ccf");
+	loadFont("font.ccf");
+
+	cctCreate(&term, WIDTH, HEIGHT);
+	cctSetFont(&term, &font);
+
+	cctPrintf(&term, "Hello");
 
 	bool loop = true;
 	while(loop){
@@ -129,11 +86,12 @@ int main(int argc, char **argv)
 					break;
 				default: break;
 			}
+			cctHandleEvent(&term, event);
 		}
 
-		renderTexture(tex);
+		glClear(GL_COLOR_BUFFER_BIT);
 
-		blitText(font, "Bla", 0, 0);
+		cctRender(&term, gltex);
 
 		ccGLBuffersSwap();
 
