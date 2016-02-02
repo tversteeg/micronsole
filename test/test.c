@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 	cctCreate(&term, WIDTH, HEIGHT);
 	cctSetFont(&term, &font);
 
-	cctPrintf(&term, "Hello");
+	cctPrintf(&term, "Hello world!\n\tHi\nH\tH\n\t\tH\tH\nH\tH\tHithere\tH\tH");
 
 	bool loop = true;
 	while(loop){

@@ -25,8 +25,10 @@ struct _cctTerm {
 	ccfFont *font;
 	unsigned width, height;
 	void *pixels;
+
 	char *out;
 	size_t outlen, outmaxlen;
+	unsigned outwidth, outheight;
 };
 
 void cctCreate(cctTerm *term, unsigned width, unsigned height);
