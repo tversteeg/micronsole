@@ -1,0 +1,67 @@
+Source: ccterm
+Priority: optional
+Maintainer: Thomas Versteeg <thomasversteeg@gmx.com>
+Build-Depends:
+ debhelper (>= 9),
+ build-essential,
+ libccore-dev,
+ libccfont-dev,
+ libgl1-mesa-dev,
+ libglu1-mesa-dev,
+ libx11-dev,
+ libxcursor-dev,
+ libxext-dev,
+ libxi-dev,
+ libxinerama-dev,
+ libxrandr-dev
+Standards-Version: 3.9.6
+Section: libs
+Homepage: http://github.com/tversteeg/ccterm
+
+Package: libccterm1
+Architecture: any
+Depends:
+ libccore1,
+ libccfont1,
+ libx11-6,
+ x11-common,
+ xserver-xorg,
+ libgl1-mesa-dri,
+ libglu1-mesa,
+ libxinerama1,
+ ${shlibs:Depends},
+ ${misc:Depends}
+Description: ccFont library and conversion tool
+ ccFont is an utility library to render and convert pixel fonts.
+ .
+ This package contains the dynamic library and a binary tool.
+
+Package: libccterm-dev
+Section: libdevel
+Architecture: any
+Depends:
+ libccore-dev,
+ libgl1-mesa-dev,
+ libglu1-mesa-dev,
+ libx11-dev,
+ libxcursor-dev,
+ libxext-dev,
+ libxi-dev,
+ libxinerama-dev,
+ libxrandr-dev,
+ libccterm1 (= ${binary:Version}), 
+ ${misc:Depends}
+Description: Development files for the ccFont utility
+ ccFont is an utility library to render and convert pixel fonts.
+ .
+ This package contains the static library, headers and documentation.
+ 
+Package: libccterm1-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: libccterm1 (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the ccFont utility
+ ccFont is an utility library to render and convert pixel fonts.
+ .
+ This package contains the debug symbols.
