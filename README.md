@@ -1,2 +1,2 @@
-# ccConsole
-In-game console
+# ccTerm
+In-game console/terminal emulator
