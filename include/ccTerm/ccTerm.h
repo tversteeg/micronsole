@@ -12,7 +12,8 @@
 #include <ccFont/ccFont.h>
 #include <ccore/event.h>
 
-#define MAX_CMD_LEN 128
+#define CCT_MAX_CMD_LEN 128
+#define CCT_BLINK_INTERVAL 20
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +30,11 @@ struct _cctTerm {
 	char *out;
 	size_t outlen, outmaxlen;
 	unsigned outwidth, outheight;
+
+	char in[CCT_MAX_CMD_LEN];
+	size_t inpos;
+
+	int blink;
 };
 
 void cctCreate(cctTerm *term, unsigned width, unsigned height);

@@ -33,16 +33,30 @@ static void _cctSetSize(cctTerm *term, unsigned width, unsigned height)
 	_cctCalcWidth(term);
 }
 
+static void _cctRenderIn(cctTerm *term)
+{	
+	ccfFontConfiguration conf = {
+		.x = 2, 
+		.y = term->height - (term->font->gheight + 2), 
+		.width = term->width, 
+		.wraptype = 0, 
+		.color = {1.0, 1.0, 1.0, 1.0}
+	};
+
+	ccfGLTexBlitChar(term->font, '>', &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
+
+	ccfGLTexBlitText(term->font, term->in, &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
+}
+
 static void _cctRenderOut(cctTerm *term)
 {
+	//TODO calculate total height for scrolling
 	size_t len = strlen(term->out);
 	if(len == 0){
 		return;
 	}
 
 	ccfFontConfiguration conf = {
-		.x = 0, 
-		.y = 0, 
 		.width = term->width, 
 		.wraptype = 0, 
 		.color = {1.0, 1.0, 1.0}
@@ -61,18 +75,45 @@ static void _cctRenderOut(cctTerm *term)
 			continue;
 		}else if(c == '\t'){
 			x += (4 - x % 4);
+		}else if(c == '\a'){
+			//TODO parse color and set font color
+			char colc;
+			do{
+				colc = term->out[++i];
+			}while(colc != 'm' && colc);
+
+			x--;
 		}else if(c != ' '){
-			int status = ccfGLTexBlitChar(term->font, term->out[i], &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
-			if(status < 0){
-				fprintf(stderr, "ccfGLTexBlitChar failed with status code: %d\n", status);
-				exit(1);
-			}
+			ccfGLTexBlitChar(term->font, term->out[i], &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
 		}
 
 		x++;
 		if(x == term->outwidth){
 			x = 0;
 			y++;
+		}
+	}
+}
+
+static void _cctRenderBlink(cctTerm *term)
+{
+	if(term->blink > CCT_BLINK_INTERVAL){
+		term->blink = -CCT_BLINK_INTERVAL;
+	}
+	term->blink++;
+
+	if(term->blink > 0){
+		return;
+	}
+
+	unsigned startx = 2 + (term->inpos + 1) * term->font->gwidth;
+	unsigned starty = term->height - (term->font->gheight + 2);
+
+	for(int y = 0; y < term->font->gheight; y++){
+		for(int x = 0; x < term->font->gwidth; x++){
+			int i = x + startx + (y + starty) * term->width;
+			unsigned char *pix = term->pixels + i * sizeof(_cctPixel);
+			pix[0] = pix[1] = pix[2] = pix[3] = 128;
 		}
 	}
 }
@@ -101,6 +142,8 @@ void cctCreate(cctTerm *term, unsigned width, unsigned height)
 	term->out = (char*)calloc(term->outmaxlen, 1);
 	term->outlen = 0;
 
+	memset(term->in, 0, CCT_MAX_CMD_LEN);
+
 	_cctSetSize(term, width, height);
 }
 
@@ -126,6 +169,8 @@ void cctRender(cctTerm *term, GLuint texture)
 	memset(term->pixels, 0, term->width * term->height * sizeof(_cctPixel));
 
 	_cctRenderOut(term);
+	_cctRenderIn(term);
+	_cctRenderBlink(term);
 
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, term->width, term->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, term->pixels);
@@ -148,6 +193,23 @@ void cctHandleEvent(cctTerm *term, ccEvent event)
 {
 	if(event.type != CC_EVENT_KEY_DOWN){
 		return;
+	}
+
+	if(event.keyCode == CC_KEY_LEFT){
+		if(term->inpos > 0){
+			term->inpos--;
+		}
+	}else if(event.keyCode == CC_KEY_RIGHT){
+		if(term->in[term->inpos] != '\0'){
+			term->inpos++;
+		}
+	}else if(event.keyCode == CC_KEY_BACKSPACE){
+		if(term->inpos > 0){
+			term->in[--term->inpos] = '\0';
+		}
+	}else{
+		term->in[term->inpos] = ccEventKeyToChar(event.keyCode);
+		term->in[++term->inpos] = '\0';
 	}
 }
 
