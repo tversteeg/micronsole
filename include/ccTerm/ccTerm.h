@@ -13,7 +13,11 @@
 #include <ccore/event.h>
 
 #define CCT_MAX_CMD_LEN 128
+#define CCT_MAX_CMDS 128
+
 #define CCT_BLINK_INTERVAL 20
+
+#define CCT_MIRROR_STDOUT
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +40,10 @@ struct _cctTerm {
 
 	int blink;
 	bool insert;
+
+	cctCmdptr cmdfuncs[CCT_MAX_CMDS];
+	char *cmds[CCT_MAX_CMDS];
+	size_t ncmds;
 };
 
 void cctCreate(cctTerm *term, unsigned width, unsigned height);

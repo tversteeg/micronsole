@@ -22,6 +22,15 @@ GLuint gltex;
 ccfFont font;
 cctTerm term;
 
+void commandTest(cctTerm *term, int argc, char **argv)
+{
+	cctPrintf(term, "Cmd: \"%s\" args:\n", argv[0]);
+	for(int i = 1; i < argc; i++){
+		cctPrintf(term, "%d: \"%s\"\n", i, argv[i]);
+	}
+	cctPrintf(term, "\n");
+}
+
 void loadFont(const char *file)
 {
 	unsigned flen = ccFileInfoGet(file).size;
@@ -68,8 +77,9 @@ int main(int argc, char **argv)
 
 	cctCreate(&term, WIDTH, HEIGHT);
 	cctSetFont(&term, &font);
+	cctMapCmd(&term, "test", commandTest);
 
-	cctPrintf(&term, "Hello\a[1;2;5mworld!");
+	cctPrintf(&term, "Type \a[1;2;5mtest!\n");
 
 	bool loop = true;
 	while(loop){

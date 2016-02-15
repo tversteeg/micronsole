@@ -134,6 +134,62 @@ static void __cctPrintf(cctTerm *term, const char *text)
 	term->outlen = total;
 }
 
+static int _cctSplitStr(const char *str, char ***res)
+{
+	int count = 0;
+	int max = 10;
+
+	*res = (char**)malloc(max * sizeof(char*));
+
+	const char *e = str;
+
+	if(e) do{
+		const char *s = e;
+		e = strpbrk(s, " ");
+
+		if(count > max){
+			max *= 2;
+			*res = (char**)realloc(*res, max * sizeof(char*));
+		}
+
+		if(e){
+			(*res)[count++] = strndup(s, e - s);
+		}else{
+			(*res)[count++] = strdup(s);
+		}
+	}while(e && *(++e));
+	
+	if(count > max){
+		*res = (char**)realloc(*res, ++max * sizeof(char*));
+	}
+
+	(*res)[count + 1] = 0;
+
+	return count;
+}
+
+static void _cctParseInput(cctTerm *term)
+{
+	char **argv = NULL;
+	int argc = _cctSplitStr(term->in, &argv);
+	size_t namelen = strlen(argv[0]);
+
+	int command = -1;
+	for(int i = 0; i < term->ncmds; i++){
+		if(strncmp(term->cmds[i], argv[0], namelen) == 0){
+			command = i;
+		}
+	}
+
+	if(command < 0){
+		cctPrintf(term, "Command \"%s\" not found!\n", argv[0]);
+	}else{
+		term->cmdfuncs[command](term, argc, argv);
+	}
+
+	free(argv);
+}
+
 void cctCreate(cctTerm *term, unsigned width, unsigned height)
 {
 	term->font = NULL;
@@ -143,6 +199,8 @@ void cctCreate(cctTerm *term, unsigned width, unsigned height)
 	term->outlen = 0;
 
 	term->insert = false;
+
+	term->ncmds = 0;
 
 	memset(term->in, 0, CCT_MAX_CMD_LEN);
 
@@ -215,20 +273,27 @@ void cctHandleEvent(cctTerm *term, ccEvent event)
 			term->inpos--;
 			memmove(term->in + term->inpos, term->in + term->inpos + 1, strlen(term->in) - term->inpos);
 		}
+	}else if(event.keyCode == CC_KEY_RETURN){
+		_cctParseInput(term);
+		term->inpos = 0;
+		term->in[0] = '\0';
 	}else{
-		if(term->insert){
-			term->in[term->inpos] = ccEventKeyToChar(event.keyCode);
-			if(++term->inpos == strlen(term->in) - 1){
-				term->in[term->inpos] = '\0';
-			}
-		}else{
-			size_t len = strlen(term->in);
-			if(term->inpos == len){
-				term->in[term->inpos] = ccEventKeyToChar(event.keyCode);
-				term->in[++term->inpos] = '\0';
-			}else if(len < CCT_MAX_CMD_LEN){
-				memmove(term->in + term->inpos + 1, term->in + term->inpos, len - term->inpos);
-				term->in[++term->inpos] = ccEventKeyToChar(event.keyCode);
+		char c = ccEventKeyToChar(event.keyCode);
+		if(c != 0){
+			if(term->insert){
+				term->in[term->inpos] = c;
+				if(++term->inpos == strlen(term->in) - 1){
+					term->in[term->inpos] = '\0';
+				}
+			}else{
+				size_t len = strlen(term->in);
+				if(term->inpos == len){
+					term->in[term->inpos] = c;
+					term->in[++term->inpos] = '\0';
+				}else if(len < CCT_MAX_CMD_LEN){
+					memmove(term->in + term->inpos + 1, term->in + term->inpos, len - term->inpos);
+					term->in[++term->inpos] = c;
+				}
 			}
 		}
 	}
@@ -241,6 +306,17 @@ void _cctPrintf(cctTerm *term, const char *text, ...)
 	va_start(arg, text);
 	char buf[256];
 	vsprintf(buf, text, arg);
+#ifdef CCT_MIRROR_STDOUT
+	printf(buf);
+#endif
 	__cctPrintf(term, buf);
 	va_end(arg);
+}
+
+void cctMapCmd(cctTerm *term, const char *cmd, cctCmdptr cmdfunc)
+{
+	term->cmdfuncs[term->ncmds] = cmdfunc;
+	term->cmds[term->ncmds] = (char*)malloc(strlen(cmd));
+	strcpy(term->cmds[term->ncmds], cmd);
+	term->ncmds++;
 }
