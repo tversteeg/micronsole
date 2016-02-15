@@ -142,6 +142,8 @@ void cctCreate(cctTerm *term, unsigned width, unsigned height)
 	term->out = (char*)calloc(term->outmaxlen, 1);
 	term->outlen = 0;
 
+	term->insert = false;
+
 	memset(term->in, 0, CCT_MAX_CMD_LEN);
 
 	_cctSetSize(term, width, height);
@@ -162,6 +164,11 @@ void cctSetFont(cctTerm *term, ccfFont *font)
 	term->font = font;
 
 	_cctCalcWidth(term);
+}
+
+void cctSetInsert(cctTerm *term, bool insert)
+{
+	term->insert = insert;
 }
 
 void cctRender(cctTerm *term, GLuint texture)
@@ -205,11 +212,25 @@ void cctHandleEvent(cctTerm *term, ccEvent event)
 		}
 	}else if(event.keyCode == CC_KEY_BACKSPACE){
 		if(term->inpos > 0){
-			term->in[--term->inpos] = '\0';
+			term->inpos--;
+			memmove(term->in + term->inpos, term->in + term->inpos + 1, strlen(term->in) - term->inpos);
 		}
 	}else{
-		term->in[term->inpos] = ccEventKeyToChar(event.keyCode);
-		term->in[++term->inpos] = '\0';
+		if(term->insert){
+			term->in[term->inpos] = ccEventKeyToChar(event.keyCode);
+			if(++term->inpos == strlen(term->in) - 1){
+				term->in[term->inpos] = '\0';
+			}
+		}else{
+			size_t len = strlen(term->in);
+			if(term->inpos == len){
+				term->in[term->inpos] = ccEventKeyToChar(event.keyCode);
+				term->in[++term->inpos] = '\0';
+			}else if(len < CCT_MAX_CMD_LEN){
+				memmove(term->in + term->inpos + 1, term->in + term->inpos, len - term->inpos);
+				term->in[++term->inpos] = ccEventKeyToChar(event.keyCode);
+			}
+		}
 	}
 }
 

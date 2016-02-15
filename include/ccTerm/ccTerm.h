@@ -35,12 +35,15 @@ struct _cctTerm {
 	size_t inpos;
 
 	int blink;
+	bool insert;
 };
 
 void cctCreate(cctTerm *term, unsigned width, unsigned height);
 void cctFree(cctTerm *term);
 void cctResize(cctTerm *term, unsigned width, unsigned height);
 void cctSetFont(cctTerm *term, ccfFont *font);
+
+void cctSetInsert(cctTerm *term, bool mode);
 
 void cctRender(cctTerm *term, GLuint texture);
 
