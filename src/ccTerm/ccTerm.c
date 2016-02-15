@@ -158,7 +158,7 @@ static int _cctSplitStr(const char *str, char ***res)
 			(*res)[count++] = strdup(s);
 		}
 	}while(e && *(++e));
-	
+
 	if(count > max){
 		*res = (char**)realloc(*res, ++max * sizeof(char*));
 	}
@@ -195,10 +195,28 @@ static void _cctAutoComplete(cctTerm *term)
 	size_t inlen = strlen(term->in);
 
 	int command = -1;
+	size_t newlen = 0;
+	bool addspace = true;
 	for(int i = 0; i < term->ncmds; i++){
-		if(strncmp(term->cmds[i], term->in, inlen) == 0){
+		if(strncmp(term->cmds[i], term->in, inlen) != 0){
+			continue;
+		}
+		if(command < 0){
 			command = i;
-			break;
+			newlen = strlen(term->cmds[i]);
+		}else{
+			char *c1 = term->cmds[i];
+			char *c2 = term->cmds[command];
+			int min = 0;
+			while(*c1 == *c2){
+				c1++;
+				c2++;
+				min++;
+			}
+			if(min < newlen){
+				newlen = min;
+			}
+			addspace = false;
 		}
 	}
 
@@ -206,12 +224,16 @@ static void _cctAutoComplete(cctTerm *term)
 		return;	
 	}
 
-	strcpy(term->in, term->cmds[command]);
-	
+	strncpy(term->in, term->cmds[command], newlen);
+
 	inlen = strlen(term->in);
-	term->in[inlen] = ' ';
-	term->in[++inlen] = '\0';
 	term->inpos = inlen;
+
+	if(addspace){
+		term->in[inlen] = ' ';
+		term->in[++inlen] = '\0';
+		term->inpos++;
+	}
 }
 
 void cctCreate(cctTerm *term, unsigned width, unsigned height)

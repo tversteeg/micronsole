@@ -78,6 +78,9 @@ int main(int argc, char **argv)
 	cctCreate(&term, WIDTH, HEIGHT);
 	cctSetFont(&term, &font);
 	cctMapCmd(&term, "test", commandTest);
+	cctMapCmd(&term, "te", commandTest);
+	cctMapCmd(&term, "test1", commandTest);
+	cctMapCmd(&term, "test2", commandTest);
 
 	cctPrintf(&term, "Type \a[1;2;5mtest!\n");
 
