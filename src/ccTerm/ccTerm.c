@@ -190,6 +190,30 @@ static void _cctParseInput(cctTerm *term)
 	free(argv);
 }
 
+static void _cctAutoComplete(cctTerm *term)
+{
+	size_t inlen = strlen(term->in);
+
+	int command = -1;
+	for(int i = 0; i < term->ncmds; i++){
+		if(strncmp(term->cmds[i], term->in, inlen) == 0){
+			command = i;
+			break;
+		}
+	}
+
+	if(command < 0){
+		return;	
+	}
+
+	strcpy(term->in, term->cmds[command]);
+	
+	inlen = strlen(term->in);
+	term->in[inlen] = ' ';
+	term->in[++inlen] = '\0';
+	term->inpos = inlen;
+}
+
 void cctCreate(cctTerm *term, unsigned width, unsigned height)
 {
 	term->font = NULL;
@@ -277,6 +301,18 @@ void cctHandleEvent(cctTerm *term, ccEvent event)
 		_cctParseInput(term);
 		term->inpos = 0;
 		term->in[0] = '\0';
+	}else if(event.keyCode == CC_KEY_TAB){
+		bool haswhite = false;
+		for(char *c = term->in; *c && c; c++){
+			if(*c == ' ' || *c == '\t'){
+				haswhite = true;
+				break;
+			}
+		}
+
+		if(!haswhite){
+			_cctAutoComplete(term);
+		}
 	}else{
 		char c = ccEventKeyToChar(event.keyCode);
 		if(c != 0){
