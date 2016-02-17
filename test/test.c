@@ -81,6 +81,7 @@ int main(int argc, char **argv)
 	cctMapCmd(&term, "te", commandTest);
 	cctMapCmd(&term, "test1", commandTest);
 	cctMapCmd(&term, "test2", commandTest);
+	cctMapCmd(&term, "help", commandTest);
 
 	cctPrintf(&term, "Type \a[1;2;5mtest!\n");
 

@@ -224,15 +224,24 @@ static void _cctAutoComplete(cctTerm *term)
 		return;	
 	}
 
-	strncpy(term->in, term->cmds[command], newlen);
+	// If Tab is pressed when the closest match is already found, show the possible options
+	if(newlen == inlen){	
+		for(int i = 0; i < term->ncmds; i++){
+			if(i == command || strncmp(term->cmds[i], term->cmds[command], newlen) != 0){
+				continue;
+			}
+			cctPrintf(term, "%s\n", term->cmds[i]);
+		}
+	}else{
+		strncpy(term->in, term->cmds[command], newlen);
 
-	inlen = strlen(term->in);
-	term->inpos = inlen;
+		term->inpos = newlen;
 
-	if(addspace){
-		term->in[inlen] = ' ';
-		term->in[++inlen] = '\0';
-		term->inpos++;
+		if(addspace){
+			term->in[newlen] = ' ';
+			term->in[++newlen] = '\0';
+			term->inpos++;
+		}
 	}
 }
 
