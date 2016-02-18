@@ -6,6 +6,8 @@
 #define _CCT_PIXEL_FORMAT GL_RGBA
 #define _CCT_PIXEL_TYPE GL_UNSIGNED_BYTE
 
+bool shiftdown = false;
+
 typedef struct {
 	unsigned char r, g, b, a;
 } _cctPixel;
@@ -224,24 +226,24 @@ static void _cctAutoComplete(cctTerm *term)
 		return;	
 	}
 
+	strncpy(term->in, term->cmds[command], newlen);
+
+	term->inpos = newlen;
+
+
 	// If Tab is pressed when the closest match is already found, show the possible options
 	if(newlen == inlen){	
+		cctPrintf(term, ">%s\n", term->in);
 		for(int i = 0; i < term->ncmds; i++){
 			if(i == command || strncmp(term->cmds[i], term->cmds[command], newlen) != 0){
 				continue;
 			}
 			cctPrintf(term, "%s\n", term->cmds[i]);
 		}
-	}else{
-		strncpy(term->in, term->cmds[command], newlen);
-
-		term->inpos = newlen;
-
-		if(addspace){
-			term->in[newlen] = ' ';
-			term->in[++newlen] = '\0';
-			term->inpos++;
-		}
+	}else if(addspace){
+		term->in[newlen] = ' ';
+		term->in[++newlen] = '\0';
+		term->inpos++;
 	}
 }
 
@@ -311,11 +313,16 @@ void cctRender(cctTerm *term, GLuint texture)
 
 void cctHandleEvent(cctTerm *term, ccEvent event)
 {
+	if(event.type == CC_EVENT_KEY_UP && event.keyCode == CC_KEY_LSHIFT){
+		shiftdown = false;
+	}
 	if(event.type != CC_EVENT_KEY_DOWN){
 		return;
 	}
 
-	if(event.keyCode == CC_KEY_LEFT){
+	if(event.keyCode == CC_KEY_LSHIFT){
+		shiftdown = true;
+	}else if(event.keyCode == CC_KEY_LEFT){
 		if(term->inpos > 0){
 			term->inpos--;
 		}
@@ -347,6 +354,9 @@ void cctHandleEvent(cctTerm *term, ccEvent event)
 	}else{
 		char c = ccEventKeyToChar(event.keyCode);
 		if(c != 0){
+			if(shiftdown){
+				c += 'A' - 'a';
+			}
 			if(term->insert){
 				term->in[term->inpos] = c;
 				if(++term->inpos == strlen(term->in) - 1){
