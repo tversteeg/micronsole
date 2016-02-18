@@ -12,6 +12,40 @@ typedef struct {
 	unsigned char r, g, b, a;
 } _cctPixel;
 
+static int _cctSplitStr(const char *str, char ***res, const char *delim)
+{
+	int count = 0;
+	int max = 10;
+
+	*res = (char**)malloc(max * sizeof(char*));
+
+	const char *e = str;
+
+	if(e) do{
+		const char *s = e;
+		e = strpbrk(s, delim);
+
+		if(count > max){
+			max *= 2;
+			*res = (char**)realloc(*res, max * sizeof(char*));
+		}
+
+		if(e){
+			(*res)[count++] = strndup(s, e - s);
+		}else{
+			(*res)[count++] = strdup(s);
+		}
+	}while(e && *(++e));
+
+	if(count > max){
+		*res = (char**)realloc(*res, ++max * sizeof(char*));
+	}
+
+	(*res)[count + 1] = 0;
+
+	return count;
+}
+
 static void _cctCalcWidth(cctTerm *term)
 {
 	if(term->font == NULL){
@@ -61,7 +95,7 @@ static void _cctRenderOut(cctTerm *term)
 	ccfFontConfiguration conf = {
 		.width = term->width, 
 		.wraptype = 0, 
-		.color = {1.0, 1.0, 1.0}
+		.color = {1.0f, 1.0f, 1.0f}
 	};
 
 	unsigned x = 0;
@@ -79,12 +113,38 @@ static void _cctRenderOut(cctTerm *term)
 			x += (4 - x % 4);
 		}else if(c == '\a'){
 			//TODO parse color and set font color
+			if(term->out[++i] != '['){
+				continue;
+			}
+
+			int j = i;
 			char colc;
 			do{
-				colc = term->out[++i];
+				colc = term->out[++j];
 			}while(colc != 'm' && colc);
 
+			char colstr[j - i];
+			strncpy(colstr, term->out + i + 1, j - i - 1);
+			colstr[j - i - 1] = '\0';
+
+			char **colors = NULL;
+			int nchannels = _cctSplitStr(colstr, &colors, ";");
+			if(nchannels == 3){
+				conf.color[0] = atoi(colors[0]) / 255.0f;
+				conf.color[1] = atoi(colors[1]) / 255.0f;
+				conf.color[2] = atoi(colors[2]) / 255.0f;
+			}else if(nchannels == 1){
+				if(strcmp(colors[0], "0") == 0){
+					conf.color[0] = 1.0f;
+					conf.color[1] = 1.0f;
+					conf.color[2] = 1.0f;
+				}
+			}
+
+			i = j;
 			x--;
+
+			free(colors);
 		}else if(c != ' '){
 			ccfGLTexBlitChar(term->font, term->out[i], &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
 		}
@@ -136,44 +196,10 @@ static void __cctPrintf(cctTerm *term, const char *text)
 	term->outlen = total;
 }
 
-static int _cctSplitStr(const char *str, char ***res)
-{
-	int count = 0;
-	int max = 10;
-
-	*res = (char**)malloc(max * sizeof(char*));
-
-	const char *e = str;
-
-	if(e) do{
-		const char *s = e;
-		e = strpbrk(s, " ");
-
-		if(count > max){
-			max *= 2;
-			*res = (char**)realloc(*res, max * sizeof(char*));
-		}
-
-		if(e){
-			(*res)[count++] = strndup(s, e - s);
-		}else{
-			(*res)[count++] = strdup(s);
-		}
-	}while(e && *(++e));
-
-	if(count > max){
-		*res = (char**)realloc(*res, ++max * sizeof(char*));
-	}
-
-	(*res)[count + 1] = 0;
-
-	return count;
-}
-
 static void _cctParseInput(cctTerm *term)
 {
 	char **argv = NULL;
-	int argc = _cctSplitStr(term->in, &argv);
+	int argc = _cctSplitStr(term->in, &argv, " ");
 	size_t namelen = strlen(argv[0]);
 
 	int command = -1;
