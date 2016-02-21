@@ -22,6 +22,19 @@ GLuint gltex;
 ccfFont font;
 cctTerm term;
 
+void fillTest(cctTerm *term, int argc, char **argv)
+{
+	int n = 20;
+	if(argc > 1){
+		n = atoi(argv[1]);
+	}
+	cctPrintf(term, "Fill buffer with a loop of %d\n", n);
+	
+	for(unsigned i = 0; i < n; i++){
+		cctPrintf(term, "%d\n", i + 1);
+	}
+}
+
 void commandTest(cctTerm *term, int argc, char **argv)
 {
 	cctPrintf(term, "Cmd: \"%s\" args:\n", argv[0]);
@@ -81,7 +94,7 @@ int main(int argc, char **argv)
 	cctMapCmd(&term, "te", commandTest);
 	cctMapCmd(&term, "test1", commandTest);
 	cctMapCmd(&term, "test2", commandTest);
-	cctMapCmd(&term, "help", commandTest);
+	cctMapCmd(&term, "fill", fillTest);
 
 	cctPrintf(&term, "Type \a[255;0;0mtest!\a[0m\n");
 

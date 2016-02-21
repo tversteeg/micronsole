@@ -102,17 +102,18 @@ static void _cctUpdateGlyphs(cctTerm *term)
 	cctColor fg = {255, 255, 255};
 	cctColor bg = {0};
 	for(unsigned i = 0; i < len; i++){
-		if(x == term->outwidth){
+		char c = term->outstr[i];
+		if(x == term->outwidth || c == '\n'){
 			x = 0;
-			y++;
+			if(y < term->outheight){
+				y++;
+			}else{
+				memmove(term->outg, term->outg + term->outwidth, y * term->outwidth * sizeof(cctGlyph));
+				memset(term->outg + y * term->outwidth, 0, term->outwidth * sizeof(cctGlyph));
+			}
 		}
 
-		char c = term->outstr[i];
-		if(c == '\n'){
-			x = 0;
-			y++;
-			continue;
-		}else if(c == '\t'){
+		if(c == '\t'){
 			x += (4 - x % 4);
 		}else if(c == '\a'){
 			if(term->outstr[++i] != '['){
@@ -142,17 +143,14 @@ static void _cctUpdateGlyphs(cctTerm *term)
 			}
 
 			i = j;
-			x--;
-
 			free(colors);
-		}else if(c != ' '){
+		}else if(c != '\n'){
 			cctGlyph *g = term->outg + x + y * term->outwidth;
 			g->c = c;
 			g->fg = fg;
 			g->bg = bg;
+			x++;
 		}
-
-		x++;
 	}
 }
 
@@ -175,8 +173,8 @@ static void _cctRenderOut(cctTerm *term)
 			if(g.c == 0){
 				continue;
 			}
-			conf.x = x * term->font->gwidth;
-			conf.y = y * term->font->gheight;
+			conf.x = x * term->font->gwidth + 2;
+			conf.y = y * term->font->gheight + 2;
 			conf.color[0] = g.fg.r / 255.0f;
 			conf.color[1] = g.fg.g / 255.0f;
 			conf.color[2] = g.fg.b / 255.0f;
