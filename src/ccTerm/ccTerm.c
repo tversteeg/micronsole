@@ -52,7 +52,13 @@ static void _cctCalcWidth(cctTerm *term)
 		return;
 	}
 	term->outwidth = (term->width - 4) / term->font->gwidth;
-	term->outheight = ((term->height - 4) / term->font->gheight - 1);
+	term->outheight = (term->height - 4) / term->font->gheight - 1;
+
+	if(term->outg){
+		free(term->outg);
+		term->outg = NULL;
+	}
+	term->outg = (cctGlyph*)calloc(term->outwidth * term->outheight, sizeof(cctGlyph));
 }
 
 static void _cctSetSize(cctTerm *term, unsigned width, unsigned height)
@@ -84,27 +90,24 @@ static void _cctRenderIn(cctTerm *term)
 	ccfGLTexBlitText(term->font, term->in, &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
 }
 
-static void _cctRenderOut(cctTerm *term)
+static void _cctUpdateGlyphs(cctTerm *term)
 {
-	//TODO calculate total height for scrolling
-	size_t len = strlen(term->out);
+	size_t len = strlen(term->outstr);
 	if(len == 0){
 		return;
 	}
 
-	ccfFontConfiguration conf = {
-		.width = term->width, 
-		.wraptype = 0, 
-		.color = {1.0f, 1.0f, 1.0f}
-	};
-
 	unsigned x = 0;
 	unsigned y = 0;
+	cctColor fg = {255, 255, 255};
+	cctColor bg = {0};
 	for(unsigned i = 0; i < len; i++){
-		conf.x = x * term->font->gwidth + 2;
-		conf.y = y * term->font->gheight + 2;
+		if(x == term->outwidth){
+			x = 0;
+			y++;
+		}
 
-		char c = term->out[i];
+		char c = term->outstr[i];
 		if(c == '\n'){
 			x = 0;
 			y++;
@@ -112,32 +115,29 @@ static void _cctRenderOut(cctTerm *term)
 		}else if(c == '\t'){
 			x += (4 - x % 4);
 		}else if(c == '\a'){
-			//TODO parse color and set font color
-			if(term->out[++i] != '['){
+			if(term->outstr[++i] != '['){
 				continue;
 			}
 
 			int j = i;
 			char colc;
 			do{
-				colc = term->out[++j];
+				colc = term->outstr[++j];
 			}while(colc != 'm' && colc);
 
 			char colstr[j - i];
-			strncpy(colstr, term->out + i + 1, j - i - 1);
+			strncpy(colstr, term->outstr + i + 1, j - i - 1);
 			colstr[j - i - 1] = '\0';
 
 			char **colors = NULL;
 			int nchannels = _cctSplitStr(colstr, &colors, ";");
 			if(nchannels == 3){
-				conf.color[0] = atoi(colors[0]) / 255.0f;
-				conf.color[1] = atoi(colors[1]) / 255.0f;
-				conf.color[2] = atoi(colors[2]) / 255.0f;
+				fg.r = atoi(colors[0]);
+				fg.g = atoi(colors[1]);
+				fg.b = atoi(colors[2]);
 			}else if(nchannels == 1){
-				if(strcmp(colors[0], "0") == 0){
-					conf.color[0] = 1.0f;
-					conf.color[1] = 1.0f;
-					conf.color[2] = 1.0f;
+				if(atoi(colors[0]) == 0){
+					fg.r = fg.g = fg.b = 255;
 				}
 			}
 
@@ -146,13 +146,41 @@ static void _cctRenderOut(cctTerm *term)
 
 			free(colors);
 		}else if(c != ' '){
-			ccfGLTexBlitChar(term->font, term->out[i], &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
+			cctGlyph *g = term->outg + x + y * term->outwidth;
+			g->c = c;
+			g->fg = fg;
+			g->bg = bg;
 		}
 
 		x++;
-		if(x == term->outwidth){
-			x = 0;
-			y++;
+	}
+}
+
+static void _cctRenderOut(cctTerm *term)
+{
+	if(term->outupdate){
+		term->outupdate = false;
+		_cctUpdateGlyphs(term);
+	}
+
+	ccfFontConfiguration conf = {
+		.width = term->width, 
+		.wraptype = 0, 
+		.color = {1.0f, 1.0f, 1.0f}
+	};
+
+	for(unsigned y = 0; y < term->outheight; y++){
+		for(unsigned x = 0; x < term->outwidth; x++){
+			cctGlyph g = term->outg[x + y * term->outwidth];
+			if(g.c == 0){
+				continue;
+			}
+			conf.x = x * term->font->gwidth;
+			conf.y = y * term->font->gheight;
+			conf.color[0] = g.fg.r / 255.0f;
+			conf.color[1] = g.fg.g / 255.0f;
+			conf.color[2] = g.fg.b / 255.0f;
+			ccfGLTexBlitChar(term->font, g.c, &conf, term->width, term->height, _CCT_PIXEL_FORMAT, _CCT_PIXEL_TYPE, term->pixels);
 		}
 	}
 }
@@ -189,11 +217,13 @@ static void __cctPrintf(cctTerm *term, const char *text)
 		term->outmaxlen *= 2;
 
 		//TODO make safe
-		term->out = (char*)realloc(term->out, term->outmaxlen);
+		term->outstr = (char*)realloc(term->outstr, term->outmaxlen);
 	}
 
-	strcpy(term->out + term->outlen, text);
+	strcpy(term->outstr + term->outlen, text);
 	term->outlen = total;
+
+	term->outupdate = true;
 }
 
 static void _cctParseInput(cctTerm *term)
@@ -278,8 +308,10 @@ void cctCreate(cctTerm *term, unsigned width, unsigned height)
 	term->font = NULL;
 
 	term->outmaxlen = 16;
-	term->out = (char*)calloc(term->outmaxlen, 1);
+	term->outstr = (char*)calloc(term->outmaxlen, 1);
+	term->outg = NULL;
 	term->outlen = 0;
+	term->outupdate = false;
 
 	term->insert = false;
 
@@ -292,7 +324,7 @@ void cctCreate(cctTerm *term, unsigned width, unsigned height)
 
 void cctFree(cctTerm *term)
 {
-	free(term->out);
+	free(term->outstr);
 }
 
 void cctResize(cctTerm *term, unsigned width, unsigned height)

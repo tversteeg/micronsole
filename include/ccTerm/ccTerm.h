@@ -26,14 +26,25 @@ extern "C" {
 typedef struct _cctTerm cctTerm;
 typedef void (*cctCmdptr) (cctTerm *term, int argc, char **argv);
 
+typedef struct {
+	unsigned char r, g, b;
+} cctColor;
+
+typedef struct {
+	char c;
+	cctColor fg, bg;
+} cctGlyph;
+
 struct _cctTerm {
 	ccfFont *font;
 	unsigned width, height;
 	void *pixels;
 
-	char *out;
+	char *outstr;
+	cctGlyph *outg;
 	size_t outlen, outmaxlen;
 	unsigned outwidth, outheight;
+	bool outupdate;
 
 	char in[CCT_MAX_CMD_LEN];
 	size_t inpos;
