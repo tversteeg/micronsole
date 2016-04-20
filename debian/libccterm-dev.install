@@ -1,3 +1,0 @@
-include/ccTerm usr/include
-lib/lib*.a usr/lib
-lib/lib*.so usr/lib
