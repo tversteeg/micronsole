@@ -1,10 +1,10 @@
 NAME=microconsole_ccore
 
 RM=rm -rf
-CFLAGS=-g -Wall -DCC_USE_ALL 
+CFLAGS=-g -Wall -pedantic -O2 -DCC_USE_ALL 
 LDLIBS=-lccore -lGL -lGLU -lGLEW -lm -lX11 -lXrandr -lXinerama -lXi -lpthread
 
-SRCS=$(shell find . -name '*.c')
+SRCS=main.c
 OBJS=$(subst .c,.o,$(SRCS))
 
 all: $(NAME)

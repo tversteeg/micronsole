@@ -4,6 +4,7 @@
 	 authored from 2016 by Thomas Versteeg
 
 DEFINES:
+MC_PRIVATE - make all the functions static, so they can only be used on the file where MC_IMPLEMENTATION is defined
 MC_OUTPUT_TEXTURE_[RGB, RGBA, BGR, BGRA] - render the output as a texture with the defined pixel format
 MC_DYNAMIC_ARRAYS - dynamically grow the array size instead of using static sizes
 MC_MAX_COMMANDS (n>0) - maximum number of commands that can be registered, only useable when MC_DYNAMIC_ARRAYS is not defined
@@ -28,6 +29,12 @@ publish and distribute this file as you see fit.
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+#ifdef MC_PRIVATE
+#define MC_API static
+#else
+#define MC_API extern
+#endif
 
 #if defined MC_OUTPUT_TEXTURE_RGB || defined MC_OUTPUT_RGBA || defined MC_OUTPUT_BGR || defined MC_OUTPUT_BGRA
 #define MC_OUTPUT_TEXTURE
@@ -61,11 +68,9 @@ struct mc_pixel {
 	unsigned char b, g, r;
 #elif defined MC_OUTPUT_TEXTURE_BGRA
 	unsigned char b, g, r, a;
-#else
-#error Undefined pixel format for texture output
 #endif
 };
-#endif
+#endif // MC_OUTPUT_TEXTURE
 
 typedef struct mc_console _mc_console_t;
 typedef void (*mc_cmd_ptr) (_mc_console_t *term, int argc, char **argv);
@@ -100,21 +105,23 @@ struct mc_console {
 #endif
 };
 
-void mc_create(struct mc_console *con);
-void mc_free(struct mc_console *con);
+MC_API int mc_create(struct mc_console *con);
+MC_API int mc_free(struct mc_console *con);
 
-void mc_map(struct mc_console *con, const char *cmd, mc_cmd_ptr func);
+MC_API int mc_map(struct mc_console *con, const char *cmd, mc_cmd_ptr func);
 
-void mc_input_key(struct mc_console *con, enum mc_keys key);
-void mc_input_char(struct mc_console *con, char key);
+MC_API int mc_input_key(struct mc_console *con, enum mc_keys key);
+MC_API int mc_input_char(struct mc_console *con, char key);
 
 #ifdef MC_OUTPUT_TEXTURE
-void mc_set_texture_size(struct mc_console *con, unsigned width, unsigned height);
+MC_API int mc_set_texture_size(struct mc_console *con, unsigned width, unsigned height);
 #endif
+
+#endif // MC_H
 
 #ifdef MC_IMPLEMENTATION
 
-void mc_create(struct mc_console *con)
+MC_API int mc_create(struct mc_console *con)
 {
 	MC_ASSERT(con);
 	memset(con, 0, sizeof(struct mc_console));
@@ -129,9 +136,11 @@ void mc_create(struct mc_console *con)
 		memset(con->cmds[i], '\0', MC_MAX_COMMAND_LENGTH * sizeof(char));
 	}
 #endif
+
+	return 0;
 }
 
-void mc_free(struct mc_console *con)
+MC_API int mc_free(struct mc_console *con)
 {
 	MC_ASSERT(con);
 #ifdef MC_DYNAMIC_ARRAYS
@@ -139,9 +148,11 @@ void mc_free(struct mc_console *con)
 	free(con->cmdfuncs);
 	free(con->cmds);
 #endif
+
+	return 0;
 }
 
-void mc_map(struct mc_console *con, const char *cmd, mc_cmd_ptr func)
+MC_API int mc_map(struct mc_console *con, const char *cmd, mc_cmd_ptr func)
 {
 	MC_ASSERT(con);
 #ifdef MC_DYNAMIC_ARRAYS
@@ -150,7 +161,7 @@ void mc_map(struct mc_console *con, const char *cmd, mc_cmd_ptr func)
 #else
 	MC_ASSERT(con->ncmds < MC_MAX_COMMANDS);
 	if(con->ncmds == MC_MAX_COMMANDS){
-		return;
+		return -1;
 	}
 #endif
 
@@ -161,9 +172,11 @@ void mc_map(struct mc_console *con, const char *cmd, mc_cmd_ptr func)
 	strcpy(con->cmds[con->ncmds], cmd);
 
 	con->ncmds++;
+
+	return 0;
 }
 
-void mc_input_key(struct mc_console *con, enum mc_keys key)
+MC_API int mc_input_key(struct mc_console *con, enum mc_keys key)
 {
 	MC_ASSERT(con);
 	switch(key){
@@ -178,10 +191,8 @@ void mc_input_key(struct mc_console *con, enum mc_keys key)
 			}
 			break;
 		case MC_KEY_UP:
-//TODO
 			break;
 		case MC_KEY_DOWN:
-//TODO
 			break;
 		case MC_KEY_BACKSPACE:
 			if(con->inpos > 0){
@@ -190,24 +201,35 @@ void mc_input_key(struct mc_console *con, enum mc_keys key)
 			}
 			break;
 	}
+
+	return 0;
 }
 
-void mc_input_char(struct mc_console *con, char key)
+MC_API int mc_input_char(struct mc_console *con, char key)
 {
 	MC_ASSERT(con);
+	if(key == '\0'){
+		return -1;
+	}
+
 	if(key >= ' ' && key <= '~'){
 
 	}
 
 	switch(key){
+		case '\n':
+
+			break;
 		case '\t':
 
 			break;
 	}
+
+	return 0;
 }
 
 #ifdef MC_OUTPUT_TEXTURE
-void mc_set_texture_size(struct mc_console *con, unsigned width, unsigned height)
+MC_API int mc_set_texture_size(struct mc_console *con, unsigned width, unsigned height)
 {
 	MC_ASSERT(con);
 	if(con->pixels){
@@ -218,9 +240,9 @@ void mc_set_texture_size(struct mc_console *con, unsigned width, unsigned height
 
 	con->width = width;
 	con->height = height;
+
+	return 0;
 }
 #endif // MC_OUTPUT_TEXTURE
 
 #endif // MC_IMPLEMENTATION
-
-#endif // MC_H
