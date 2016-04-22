@@ -49,3 +49,37 @@ MC_API int mc_ccore_handle_event(struct mc_console *con, ccEvent event)
 
 	return 0;
 }
+
+#ifdef MC_CCORE_OPENGL
+MC_API int mc_ccore_setup_texture(struct mc_console *con, GLuint tex)
+{
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return 0;
+}
+
+MC_API int mc_ccore_render_texture(struct mc_console *con, GLuint tex)
+{
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+#ifdef MC_OUTPUT_TEXTURE_RGB
+	GLint format = GL_RGB;
+#elif defined MC_OUTPUT_TEXTURE_RGBA
+	GLint format = GL_RGBA;
+#elif defined MC_OUTPUT_TEXTURE_BGR
+	GLint format = GL_BGR;
+#elif defined MC_OUTPUT_TEXTURE_BGRA
+	GLint format = GL_BGRA;
+#endif
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, con->width, con->height, 0, format, GL_UNSIGNED_BYTE, con->pixels);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return 0;
+}
+#endif // MC_CCORE_OPENGL

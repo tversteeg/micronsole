@@ -36,7 +36,7 @@ publish and distribute this file as you see fit.
 #define MC_API extern
 #endif
 
-#if defined MC_OUTPUT_TEXTURE_RGB || defined MC_OUTPUT_RGBA || defined MC_OUTPUT_BGR || defined MC_OUTPUT_BGRA
+#if defined MC_OUTPUT_TEXTURE_RGB || defined MC_OUTPUT_TEXTURE_RGBA || defined MC_OUTPUT_TEXTURE_BGR || defined MC_OUTPUT_TEXTURE_BGRA
 #define MC_OUTPUT_TEXTURE
 #endif
 
