@@ -9,7 +9,8 @@ OBJS=$(subst .c,.o,$(SRCS))
 
 all: $(NAME)
 
-$(NAME): $(OBJS)
+.PHONY: $(NAME)
+$(NAME): clean $(OBJS)
 	$(CC) $(LDFLAGS) -o $(NAME) $(OBJS) $(LDLIBS)
 
 .PHONY: clean
