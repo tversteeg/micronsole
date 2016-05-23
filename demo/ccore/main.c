@@ -47,6 +47,7 @@ int main(void)
 			if(event.type == CC_EVENT_WINDOW_QUIT || (event.type == CC_EVENT_KEY_DOWN && event.keyCode == CC_KEY_ESCAPE)){
 				loop = false;
 			}else{
+				mc_blit_glyph_default(&con, 5, 5, 'a');
 				mc_ccore_handle_event(&con, event);
 			}
 		}
