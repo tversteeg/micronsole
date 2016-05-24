@@ -235,23 +235,6 @@ MC_API int mc_input_char(struct mc_console *con, char key)
 	return 0;
 }
 
-#ifdef MC_OUTPUT_TEXTURE
-MC_API int mc_set_texture_size(struct mc_console *con, unsigned width, unsigned height)
-{
-	MC_ASSERT(con);
-	if(con->pixels){
-		con->pixels = (struct mc_pixel*)realloc(con->pixels, width * height * sizeof(struct mc_pixel));
-	}else{
-		con->pixels = (struct mc_pixel*)malloc(width * height * sizeof(struct mc_pixel));
-	}
-
-	con->width = width;
-	con->height = height;
-
-	return 0;
-}
-#endif // MC_OUTPUT_TEXTURE
-
 // Font converted with ccfconv (ccFont) from Pixerif and converted to binary with xxd
 static unsigned char _mc_default_font_bin[] = {
   0x01, 0x0c, 0x0f, 0x21, 0x80, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x5a,
@@ -500,6 +483,7 @@ static unsigned char _mc_default_font_bin[] = {
 
 static bool _mc_default_font_is_allocated = false;
 static int _mc_default_font_glyph_width, _mc_default_font_glyph_height, _mc_default_font_glyph_start, _mc_default_font_glyph_num;
+static unsigned _mc_default_font_width;
 static unsigned char *_mc_default_font_data;
 
 static int _mc_font_allocate()
@@ -517,10 +501,12 @@ static int _mc_font_allocate()
 	_mc_default_font_glyph_start = _mc_default_font_bin[3];
 	_mc_default_font_glyph_num = _mc_default_font_bin[4];
 
+	printf("w: %d, h: %d\n", _mc_default_font_glyph_width, _mc_default_font_glyph_height);
+
 #define _MC_UNPACK8TO32(b, c, i) \
 	b = (c[i] << 24) | (c[i + 1] << 16) | (c[i + 2] << 8) | c[i + 3];
-	unsigned width, totallen;
-	_MC_UNPACK8TO32(width, _mc_default_font_bin, 5);
+	unsigned totallen;
+	_MC_UNPACK8TO32(_mc_default_font_width, _mc_default_font_bin, 5);
 	_MC_UNPACK8TO32(totallen, _mc_default_font_bin, 9);
 #undef _MC_UNPACK8TO32
 
@@ -551,11 +537,49 @@ static int _mc_font_allocate()
 
 MC_API int mc_blit_glyph_default(struct mc_console *con, unsigned x, unsigned y, char glyph)
 {
-	if(!_mc_font_allocate()){
-		return -1;
+	int c = glyph - _mc_default_font_glyph_start;
+	if(c < 0 || c > _mc_default_font_glyph_num){
+		return -2;
+	}
+
+	int start = c * _mc_default_font_glyph_width;
+
+	int i;
+	for(i = 0; i < _mc_default_font_glyph_height; i++){
+		int j, ty = (y + i) * con->width;
+		for(j = 0; j < _mc_default_font_glyph_width; j++){
+			unsigned char bit = (_mc_default_font_data[start + j + i * _mc_default_font_width] & 1) * 255;
+
+			con->pixels[x + j + ty] = (struct mc_pixel){bit, bit, bit
+#if defined MC_OUTPUT_TEXTURE_RGBA || defined MC_OUTPUT_TEXTURE_BGRA
+				,bit
+#endif
+			};
+		}
 	}
 
 	return 0;
 }
+
+#ifdef MC_OUTPUT_TEXTURE
+MC_API int mc_set_texture_size(struct mc_console *con, unsigned width, unsigned height)
+{
+	MC_ASSERT(con);
+
+	if(con->pixels){
+		con->pixels = (struct mc_pixel*)realloc(con->pixels, width * height * sizeof(struct mc_pixel));
+	}else{
+		con->pixels = (struct mc_pixel*)malloc(width * height * sizeof(struct mc_pixel));
+		_mc_font_allocate();
+	}
+
+	con->width = width;
+	con->height = height;
+
+	return 0;
+}
+#endif // MC_OUTPUT_TEXTURE
+
+
 
 #endif // MC_IMPLEMENTATION

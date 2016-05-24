@@ -7,13 +7,13 @@ MC_API int mc_ccore_create(struct mc_console *con)
 	if(!ccWindowExists()){
 		return -1;
 	}
-	if(!mc_create(con)){
-		return -1;
+	if(mc_create(con)){
+		return -2;
 	}
 
 	ccRect s = ccWindowGetRect();
-	if(!mc_set_texture_size(con, s.width, s.height)){
-		return -1;
+	if(mc_set_texture_size(con, s.width, s.height)){
+		return -3;
 	}
 
 	return 0;
